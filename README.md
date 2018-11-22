@@ -98,4 +98,4 @@ The project is released under version 2.0 of the [Apache License][a].
 [e]: https://github.com/lenisha/spring-echo-example
 [o]: https://stackoverflow.com/questions/41699608/resttemplate-not-passing-origin-header
 [bae]: https://www.baeldung.com/httpclient-ssl
-[image]: https://github.com/lenisha/route-service-example/raw/master/http-transcripts.png "Http Traffic"
+[image]: https://github.com/lenisha/route-service-example/raw/resttemplate/http-transcripts.png "Http Traffic"
