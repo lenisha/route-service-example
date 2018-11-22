@@ -2,7 +2,7 @@
 
 This project is an example of a [Cloud Foundry Route Service][r] written with [Spring Boot][b].  This application does the following to each request:
 
-Use [Spring echo][e] application in backend to verify headers
+Use [Spring echo][e] application in backend to verify headers and CORS
 
 1. Intercepts an incoming request
 2. Logs information about that incoming request
@@ -27,8 +27,9 @@ Next, create a user provided service that contains the route service configurati
 ```bash
 $ cf create-user-provided-service test-route-service -r https://<ROUTE-SERVICE-ADDRESS>
 
+e.g
 
-cf create-user-provided-service test-route-service -r https://route-service.apps.137.135.115.90.cf.pcfazure.com
+$ cf create-user-provided-service test-route-service -r https://route-service.apps.137.135.115.90.cf.pcfazure.com
 
 ```
 
@@ -36,12 +37,14 @@ The next step assumes that you have an application already running that you'd li
 ```bash
 $ cf bind-route-service <APPLICATION-DOMAIN> test-route-service --hostname <APPLICATION-HOST>
 
-cf bind-route-service apps.137.135.115.90.cf.pcfazure.com test-route-service --hostname spring-echo
+e.g
+
+$ cf bind-route-service apps.137.135.115.90.cf.pcfazure.com test-route-service --hostname spring-echo
 ```
 
 In order to view the interception of the requests, you will need to stream the logs of the route service.  To do this, run the following command:
 ```bash
-$ cf logs route-service-example
+$ cf logs route-service
 ```
 
 Finally, start making requests against your test application.  The route service's logs should start returning results that look similar to the following:
@@ -70,6 +73,17 @@ INFO  Outgoing Response: 200, {Content-Type=[text/plain], Content-Length=[9]}
 The project is set up as a Maven project and doesn't have any special requirements beyond that. It has been created using [IntelliJ][j] and contains configuration information for that environment, but should work with other IDEs.
 
 
+## Origin Header Handing
+Default RestTemplate uses JDK HttpUrlConnection class that filters out set of restricted headers [Stack Overflow][o]
+
+To enable is switch RestTemplate connection factory to use Apache Http Components. Refer to `HttpConfig` class
+
+Here is result of the Route service in front of `spring-echo` service passing Origin header:
+
+![Http Traffic][image]
+
+
+
 ## License
 The project is released under version 2.0 of the [Apache License][a].
 
@@ -81,4 +95,7 @@ The project is released under version 2.0 of the [Apache License][a].
 [j]: http://www.jetbrains.com/idea/
 [r]: http://docs.cloudfoundry.org/services/route-services.html
 [y]: manifest.yml
-[e]: https://github.com/raonigabriel/spring-echo-example
+[e]: https://github.com/lenisha/spring-echo-example
+[o]: https://stackoverflow.com/questions/41699608/resttemplate-not-passing-origin-header
+[bae]: https://www.baeldung.com/httpclient-ssl
+[image]: https://github.com/lenisha/route-service-example/raw/master/http-transcripts.png "Http Traffic"

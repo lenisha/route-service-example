@@ -3,56 +3,39 @@ package org.cloudfoundry.example;
 
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
+
+import java.io.IOException;
 
 @Configuration
 public class HttpConfig {
 
-    /*
-     * Build http client with
-     * Pooling connection manager {@link http://hc.apache.org/httpcomponents-client-ga/tutorial/html/connmgmt.html#d5e393}
-     */
+
+    private Log logger = LogFactory.getLog(HttpConfig.class);
+
     @Bean
-    @Qualifier("pooling")
-    public CloseableHttpClient poolingHttpClient() {
-        CloseableHttpClient httpClient = HttpClientBuilder
-                .create()
-                .useSystemProperties()
-                .setMaxConnTotal(100)
-                .setMaxConnPerRoute(1)
+    public ClientHttpRequestFactory httpRequestFactory() {
+        this.logger.debug("Setting Apache Commons factory with no SSL verification");
+
+        CloseableHttpClient httpClient
+                = HttpClients.custom()
                 .setSSLHostnameVerifier(new NoopHostnameVerifier())
                 .build();
-        return httpClient;
-    }
-
-    /* Or
-     * Build http client with
-     * Simple connection manager
-     */
-    @Bean
-    @Qualifier("simple")
-    public CloseableHttpClient simpleHttpClient () {
-        CloseableHttpClient httpClient = HttpClientBuilder
-                .create()
-                .setConnectionManager(new BasicHttpClientConnectionManager())
-                .build();
-        return httpClient;
-    }
-
-    @Bean
-    public ClientHttpRequestFactory httpRequestFactory(
-            @Autowired @Qualifier("pooling") CloseableHttpClient httpClient) {
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        return factory;
+        HttpComponentsClientHttpRequestFactory requestFactory
+                = new HttpComponentsClientHttpRequestFactory();
+        requestFactory.setHttpClient(httpClient);
+        return requestFactory;
     }
 
     /*
@@ -61,8 +44,18 @@ public class HttpConfig {
      */
     @Bean
     public RestOperations restTemplate(@Autowired ClientHttpRequestFactory factory) {
+        logger.debug("Http Client Factory:" + factory.getClass().toString());
         RestTemplate template = new RestTemplate(factory);
+        template.setErrorHandler(new NoErrorsResponseErrorHandler());
         return template;
     }
 
+
+    private static final class NoErrorsResponseErrorHandler extends DefaultResponseErrorHandler {
+        @Override
+        public boolean hasError(ClientHttpResponse response) throws IOException {
+            return false;
+        }
+
+    }
 }

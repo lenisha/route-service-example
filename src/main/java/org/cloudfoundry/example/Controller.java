@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestOperations;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 
 
 @RestController
@@ -49,10 +50,11 @@ final class Controller {
     }
 
 
-
     @RequestMapping(headers = {FORWARDED_URL, PROXY_METADATA, PROXY_SIGNATURE})
-    ResponseEntity<?> service(RequestEntity<byte[]> incoming) {
+    ResponseEntity<?> service(RequestEntity<byte[]> incoming)  {
         this.logger.info("Incoming Request: {}", incoming);
+
+        String forward = incoming.getHeaders().get(FORWARDED_URL).get(0);
 
         RequestEntity<?> outgoing = getOutgoingRequest(incoming);
         this.logger.info("Outgoing Request: {}", outgoing);
@@ -66,11 +68,15 @@ final class Controller {
     private static RequestEntity<?> getOutgoingRequest(RequestEntity<?> incoming) {
         HttpHeaders headers = new HttpHeaders();
         headers.putAll(incoming.getHeaders());
+        headers.remove("Host"); // update host to the original url
 
-        URI uri = headers.remove(FORWARDED_URL).stream()
+        URI uri = headers.remove(FORWARDED_URL)
+                .stream()
                 .findFirst()
                 .map(URI::create)
                 .orElseThrow(() -> new IllegalStateException(String.format("No %s header present", FORWARDED_URL)));
+
+        headers.add("Host",uri.getHost());
 
         return new RequestEntity<>(incoming.getBody(), headers, incoming.getMethod(), uri);
     }
