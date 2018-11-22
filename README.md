@@ -1,5 +1,7 @@
 # Cloud Foundry Route Service Example
 
+## Example shows usage of Apache Http Client for CORS enablement
+
 This project is an example of a [Cloud Foundry Route Service][r] written with [Spring Boot][b].  This application does the following to each request:
 
 Use [Spring echo][e] application in backend to verify headers and CORS
