@@ -2,6 +2,8 @@
 
 This project is an example of a [Cloud Foundry Route Service][r] written with [Spring Boot][b].  This application does the following to each request:
 
+Use [Spring echo][e] application in backend to verify headers
+
 1. Intercepts an incoming request
 2. Logs information about that incoming request
 3. Transforms the incoming request to an outgoing request
@@ -24,11 +26,17 @@ $ cf push
 Next, create a user provided service that contains the route service configuration information.  To do this, run the following command, substituting the address that the route service is listening on:
 ```bash
 $ cf create-user-provided-service test-route-service -r https://<ROUTE-SERVICE-ADDRESS>
+
+
+cf create-user-provided-service test-route-service -r https://route-service.apps.137.135.115.90.cf.pcfazure.com
+
 ```
 
 The next step assumes that you have an application already running that you'd like to bind this route service to.  To do this, run the following command, substituting the domain and hostname bound to that application:
 ```bash
 $ cf bind-route-service <APPLICATION-DOMAIN> test-route-service --hostname <APPLICATION-HOST>
+
+cf bind-route-service apps.137.135.115.90.cf.pcfazure.com test-route-service --hostname spring-echo
 ```
 
 In order to view the interception of the requests, you will need to stream the logs of the route service.  To do this, run the following command:
@@ -73,3 +81,4 @@ The project is released under version 2.0 of the [Apache License][a].
 [j]: http://www.jetbrains.com/idea/
 [r]: http://docs.cloudfoundry.org/services/route-services.html
 [y]: manifest.yml
+[e]: https://github.com/raonigabriel/spring-echo-example

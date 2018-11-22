@@ -1,5 +1,5 @@
 ---
 applications:
-- name: route-service-example
-  random-route: true
+- name: route-service
+  buildpack: java_buildpack_offline
   path: target/route-service-1.0.0.BUILD-SNAPSHOT.jar
