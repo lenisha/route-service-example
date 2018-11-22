@@ -39,12 +39,12 @@ public class RouteServiceApplication {
         SpringApplication.run(RouteServiceApplication.class, args);
     }
 
-    @Bean
+    /*@Bean
     RestOperations restOperations() {
         RestTemplate restTemplate = new RestTemplate(new TrustEverythingClientHttpRequestFactory());
         restTemplate.setErrorHandler(new NoErrorsResponseErrorHandler());
         return restTemplate;
-    }
+    }*/
 
 
 
