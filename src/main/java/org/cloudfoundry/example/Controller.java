@@ -18,19 +18,17 @@ package org.cloudfoundry.example;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestOperations;
 
-import static org.springframework.http.HttpHeaders.HOST;
+import java.net.URI;
+
 
 @RestController
 final class Controller {
@@ -43,60 +41,38 @@ final class Controller {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private final WebClient webClient;
+    private final RestOperations restOperations;
 
-    Controller(WebClient webClient) {
-        this.webClient = webClient;
+    @Autowired
+    Controller(RestOperations restOperations) {
+        this.restOperations = restOperations;
     }
+
+
 
     @RequestMapping(headers = {FORWARDED_URL, PROXY_METADATA, PROXY_SIGNATURE})
-    Mono<ResponseEntity<Flux<DataBuffer>>> service(ServerHttpRequest request) {
+    ResponseEntity<?> service(RequestEntity<byte[]> incoming) {
+        this.logger.info("Incoming Request: {}", incoming);
 
-        this.logger.info("Incoming Request:  {}", formatRequest(request.getMethod(), request.getURI().toString(), request.getHeaders()));
+        RequestEntity<?> outgoing = getOutgoingRequest(incoming);
+        this.logger.info("Outgoing Request: {}", outgoing);
 
-        String forwardedUrl = getForwardedUrl(request.getHeaders());
-        HttpHeaders forwardedHttpHeaders = getForwardedHeaders(request.getHeaders());
+        ResponseEntity<?> response = this.restOperations.exchange(outgoing, byte[].class);
+        this.logger.info("Outgoing Response: {}", response);
 
-        this.logger.info("Outgoing Request:  {}", formatRequest(request.getMethod(), forwardedUrl, forwardedHttpHeaders));
-
-        return this.webClient
-            .method(request.getMethod())
-            .uri(forwardedUrl)
-            .headers(headers -> headers.putAll(forwardedHttpHeaders))
-            .body((outputMessage, context) -> outputMessage.writeWith(request.getBody()))
-            .exchange()
-            .map(response -> {
-                this.logger.info("Outgoing Response: {}", formatResponse(response.statusCode(), response.headers().asHttpHeaders()));
-
-                return ResponseEntity
-                    .status(response.statusCode())
-                    .headers(response.headers().asHttpHeaders())
-                    .body(response.bodyToFlux(DataBuffer.class));
-            });
+        return response;
     }
 
-    private static String formatRequest(HttpMethod method, String uri, HttpHeaders headers) {
-        return String.format("%s %s, %s", method, uri, headers);
-    }
+    private static RequestEntity<?> getOutgoingRequest(RequestEntity<?> incoming) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.putAll(incoming.getHeaders());
 
-    private static String getForwardedUrl(HttpHeaders httpHeaders) {
-        String forwardedUrl = httpHeaders.getFirst(FORWARDED_URL);
+        URI uri = headers.remove(FORWARDED_URL).stream()
+                .findFirst()
+                .map(URI::create)
+                .orElseThrow(() -> new IllegalStateException(String.format("No %s header present", FORWARDED_URL)));
 
-        if (forwardedUrl == null) {
-            throw new IllegalStateException(String.format("No %s header present", FORWARDED_URL));
-        }
-
-        return forwardedUrl;
-    }
-
-    private String formatResponse(HttpStatus statusCode, HttpHeaders headers) {
-        return String.format("%s, %s", statusCode, headers);
-    }
-
-    private HttpHeaders getForwardedHeaders(HttpHeaders headers) {
-        return headers.entrySet().stream()
-            .filter(entry -> !entry.getKey().equalsIgnoreCase(FORWARDED_URL) && !entry.getKey().equalsIgnoreCase(HOST))
-            .collect(HttpHeaders::new, (httpHeaders, entry) -> httpHeaders.addAll(entry.getKey(), entry.getValue()), HttpHeaders::putAll);
+        return new RequestEntity<>(incoming.getBody(), headers, incoming.getMethod(), uri);
     }
 
 }
